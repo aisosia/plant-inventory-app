@@ -1,34 +1,76 @@
-import { useState } from 'react';
-import { addDoc, collection } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../utils/firebase';
-import QRCode from 'react-qr-code';
+import { useState } from "react";
+import QRCode from "qrcode.react";
+import { addPlant } from "../utils/firebase";
+
 export default function PlantForm() {
-  const [data, setData] = useState({ name:'', height:'', age:'', climate:'', inSoil:false, quantity:1, description:'', photo:null });
-  const [qrUrl, setQrUrl] = useState('');
-  const handleChange = e => {
-    const { name, value, type, checked, files } = e.target;
-    setData(prev => ({ ...prev, [name]: type==='checkbox'?checked : type==='file'?files[0]:value }));
+  const [formData, setFormData] = useState({
+    name: "",
+    latinName: "",
+    description: "",
+    photo: null,
+  });
+  const [qrUrl, setQrUrl] = useState("");
+
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    setFormData({
+      ...formData,
+      [name]: files ? files[0] : value,
+    });
   };
-  const handleSubmit = async e => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const photoRef = ref(storage, `plants/${Date.now()}_${data.photo.name}`);
-    await uploadBytes(photoRef, data.photo);
-    const photoURL = await getDownloadURL(photoRef);
-    const docRef = await addDoc(collection(db,'plants'),{ ...data, photoURL, createdAt:Date.now(), inSoil:data.inSoil });
-    const url = `${window.location.origin}/view/${docRef.id}`;
+    const id = await addPlant(formData);
+    const url = `${window.location.origin}/view/${id}`;
     setQrUrl(url);
   };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <input required name="name" placeholder="Сорт" onChange={handleChange} className="w-full p-2 border rounded" />
-      <input name="height" placeholder="Высота" onChange={handleChange} className="w-full p-2 border rounded" />
-      <input name="age" placeholder="Возраст" onChange={handleChange} className="w-full p-2 border rounded" />
-      <input name="climate" placeholder="Климат" onChange={handleChange} className="w-full p-2 border rounded" />
-      <label><input type="checkbox" name="inSoil" checked={data.inSoil} onChange={handleChange}/> В земле</label>
-      <input type="number" name="quantity" min="1" placeholder="Количество" onChange={handleChange} className="w-full p-2 border rounded" />
-      <textarea name="description" placeholder="Описание" onChange={handleChange} className="w-full p-2 border rounded" />
-      <input type="file" name="photo" accept="image/*" onChange={handleChange} className="w-full" required />
-      <button type="submit" className="w-full p-2 bg-blue-600 text-white rounded">Сгенерировать QR</button>
-      {qrUrl && <div><QRCode value={qrUrl} /><p>{qrUrl}</p></div>}
+    <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded shadow">
+      <input
+        type="text"
+        name="name"
+        placeholder="Название"
+        value={formData.name}
+        onChange={handleChange}
+        className="w-full p-2 border"
+        required
+      />
+      <input
+        type="text"
+        name="latinName"
+        placeholder="Латинское название"
+        value={formData.latinName}
+        onChange={handleChange}
+        className="w-full p-2 border"
+        required
+      />
+      <textarea
+        name="description"
+        placeholder="Описание"
+        value={formData.description}
+        onChange={handleChange}
+        className="w-full p-2 border"
+        required
+      />
+      <input
+        type="file"
+        name="photo"
+        accept="image/*"
+        onChange={handleChange}
+        className="w-full"
+        required
+      />
+      <button type="submit" className="w-full p-2 bg-blue-600 text-white rounded">
+        Сгенерировать QR
+      </button>
+      {qrUrl && (
+        <div className="mt-4">
+          <QRCode value={qrUrl} />
+          <p className="text-sm break-all mt-2">{qrUrl}</p>
+        </div>
+      )}
     </form>
+  );
+}
